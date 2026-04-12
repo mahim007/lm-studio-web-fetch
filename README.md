@@ -32,7 +32,7 @@ User Prompt → LM Studio → MCP Server → web_search_tool.py → Internet
 ### 1. Clone or Navigate to the Project
 
 ```bash
-cd F:\Projects\Learning\Python\web_search_tool
+cd path/to/project/root
 ```
 
 ### 2. Create a Virtual Environment (Recommended)
@@ -92,14 +92,14 @@ Add the following configuration to your `mcp.json`:
 {
   "mcpServers": {
     "fetch_web_page": {
-      "command": "F:/Projects/Learning/Python/web_search_tool/.venv/Scripts/python.exe",
-      "args": ["F:/Projects/Learning/Python/web_search_tool/mcp_server.py"]
+      "command": "path/to/project/root/.venv/Scripts/python.exe",
+      "args": ["path/to/project/root/mcp_server.py"]
     }
   }
 }
 ```
 
-**Note**: Adjust the paths to match your installation directory.
+**Note**: Adjust the paths to match your installation directory. On Linux/Mac, use `.venv/bin/python` instead of `.venv/Scripts/python.exe`.
 
 ### Step 3: Reload MCP Plugins
 
