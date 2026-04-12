@@ -1,0 +1,14 @@
+{
+  "name": "fetch_web_page",
+  "description": "Fetches and extracts structured content from a given web page URL. Use this when you need to read or analyze information from a specific webpage, article, or online document. The tool returns the page title, a summary, and the full extracted text content.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "The complete URL of the web page to fetch. Must include the protocol (http:// or https://). Example: https://en.wikipedia.org/wiki/Artificial_intelligence"
+      }
+    },
+    "required": ["url"]
+  }
+}
