@@ -5,7 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY web_search_tool.py .
+COPY web_fetch/ ./web_fetch
+COPY web_search/ ./web_search
 COPY mcp_server.py .
 
 EXPOSE 5000

@@ -1,24 +1,27 @@
+import logging
 import requests
 from bs4 import BeautifulSoup
 import json
 import re
 
-def web_search_tool(url: str) -> dict:
+logger = logging.getLogger("web_fetch")
+
+def web_fetch_tool(url: str) -> dict:
     """
-    Fetched content from a URL, parses the main article body, 
+    Fetched content from a URL, parses the main article body,
     and returns a structured json data suitable for LLM
     """
 
-    print(f"Attempting to fetch and parse: {url}")
+    logger.info(f"Fetching URL: {url}")
 
     try:
-        # 1. Fetcher Layer
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'} # Updated User Agent
-        response = requests.get(url, headers=headers, timeout=10, verify=False)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
+        logger.info(f"Successfully fetched: {url} ({response.status_code})")
 
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching URL: {url}: {e}")
+        logger.error(f"Failed to fetch {url}: {e}")
         return {"error" : f"could not access the web page due to a connection error: {e}"}
 
     # 2. Parser Layer
@@ -59,9 +62,12 @@ def web_search_tool(url: str) -> dict:
         
         extracted_text = reduce_noise(structured_content)
     else:
-        print(f"Could not find a suitable content container for URL: {url}")
+        logger.warning(f"No suitable content container found for: {url}, using fallback")
         fallback_text = soup.body.get_text(separator='\n', strip=True)
-        extracted_text = reduce_noise([line for line in fallback_text.split('\n') if len(line) > 50])
+        lines = fallback_text.split('\n')
+        important_short_text = [line for line in lines if 3 <= len(line) <= 50 and re.search(r'\d', line)]
+        long_text = [line for line in lines if len(line) > 50]
+        extracted_text = reduce_noise(important_short_text + long_text)
 
     
     output = {
@@ -102,7 +108,7 @@ def reduce_noise(content: list) -> str:
 
 if __name__ == "__main__":
     test_url = "https://en.wikipedia.org/wiki/Natural_language_processing"
-    result = web_search_tool(test_url)
+    result = web_fetch_tool(test_url)
     print("=========================")
     print("✅ SUCCESSFUL JSON OUTPUT FOR LLM:")
     print(json.dumps(result, indent=4))

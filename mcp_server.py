@@ -3,7 +3,8 @@ import os
 import sys
 
 from mcp.server.fastmcp import FastMCP
-from web_search_tool import web_search_tool
+from web_search.tools import web_search
+from web_fetch.tools import web_fetch
 
 # Configure logging
 logging.basicConfig(
@@ -12,34 +13,27 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout,
 )
-logger = logging.getLogger("fetch_web_page")
+logger = logging.getLogger("web_tools")
 
 # Server configuration
 SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "5000"))
 
-mcp = FastMCP("fetch_web_page")
+mcp = FastMCP("web_tools")
 
 
 @mcp.tool()
-def fetch_web_page(url: str) -> dict:
-    """
-    Fetches and extracts content from a web page URL.
+def web_fetch_call(url: str) -> dict:
+    """Fetch and extract the full content from a web page URL. Returns the page title and extracted text content. Use this after web_search_call to get detailed information from search results."""
+    logger.info(f"Tool called: web_fetch(url='{url}')")
+    return web_fetch(url=url)
 
-    Args:
-        url: The complete URL of the web page to fetch.
+@mcp.tool()
+def web_search_call(query: str, limit: int = 10) -> list[dict]:
+    """Search the web using DuckDuckGo. Returns title, URL, and snippet for up to 10 results. IMPORTANT: After searching, ALWAYS fetch at least 2-3 of the most relevant URLs using web_fetch_call to get the full detailed content. Don't rely on snippets alone. For FACTUAL questions (versions, dates, numbers), you MUST fetch the official/source URL to get exact verified information."""
+    logger.info(f"Tool called: web_search(query='{query}', limit={limit})")
+    return web_search(query=query, limit=limit)
 
-    Returns:
-        A dictionary with url, title, extracted_summary and extracted_content.
-    """
-    logger.info(f"Tool called: fetch_web_page(url='{url}')")
-    try:
-        result = web_search_tool(url=url)
-        logger.info(f"Tool completed successfully: {url}")
-        return result
-    except Exception as e:
-        logger.error(f"Tool failed: {url} - {type(e).__name__}: {e}")
-        raise
 
 
 # Create ASGI app for uvicorn

@@ -1,97 +1,128 @@
-# Web Fetch Tool for LM Studio
+# Web Tools MCP Server for LM Studio
 
-A custom MCP tool that enables local LLMs (via LM Studio) to fetch and read web pages.
+A Dockerized MCP server that enables local LLMs (via LM Studio) to search the web and fetch webpage content.
 
-## How It Works
+## Features
+
+- **Web Search** - Search DuckDuckGo and get up to 10 results with title, URL, and snippet
+- **Web Fetch** - Fetch and extract content from any URL
+- **Two-Tool Workflow** - Search first, then fetch detailed content from relevant URLs
+
+## Architecture
 
 ```
-User → LM Studio → MCP Server → web_search_tool.py → Internet
-                  ← JSON Response ←
-                  ← Answer ←
+User → LM Studio → MCP Server → web_search/ & web_fetch/ modules → Internet
+                      ← JSON Response ←
+                      ← Answer ←
 ```
 
 ## Prerequisites
 
 - Python 3.11+
 - LM Studio v0.3.17+
-- Docker (for containerized deployment)
+- Docker & Docker Compose
 - pip
 
-## Installation
+## Quick Start
 
-### Option 1: Local Development
-
-```bash
-cd path/to/project/root
-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1    # Windows
-# source .venv/bin/activate      # Linux/Mac
-
-pip install -r requirements.txt
-```
-
-### Option 2: Docker
+### 1. Build & Run with Docker
 
 ```bash
-docker build -t fetch-web-page-mcp .
-```
+# Build the image
+docker build -t web-tools-mcp .
 
-## Running the MCP Server
-
-### Option 1: Local (STDIO transport)
-
-```bash
-python mcp_server.py
-```
-
-**Keep this terminal open** while using LM Studio.
-
-### Option 2: Docker (HTTP transport - Recommended)
-
-```bash
-# Single container
-docker run -d -p 5000:5000 --name fetch-web-page-mcp fetch-web-page-mcp
-```
-
-Or with Docker Compose:
-
-```bash
+# Run with docker-compose
 docker-compose up -d
 ```
 
 The server will be available at `http://localhost:5000/mcp`.
 
-## Configure LM Studio
+### 2. Configure LM Studio
 
-### Option 1: STDIO (for local development)
-
-```json
-{
-  "mcpServers": {
-    "fetch_web_page": {
-      "command": "path/to/project/root/.venv/Scripts/python.exe",
-      "args": ["path/to/project/root/mcp_server.py"]
-    }
-  }
-}
-```
-
-### Option 2: HTTP (for Docker)
+Add to your LM Studio MCP configuration:
 
 ```json
 {
   "mcpServers": {
-    "fetch_web_page": {
+    "web-tools": {
       "url": "http://localhost:5000/mcp"
     }
   }
 }
 ```
 
-**Note**: On Linux/Mac, use `.venv/bin/python` instead.
-
 Then reload MCP in LM Studio (Settings → Plugins → MCP → Reload).
+
+## Available Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `web_search_call` | Search DuckDuckGo | `query` (string), `limit` (int, default 10) |
+| `web_fetch_call` | Fetch webpage content | `url` (string) |
+
+## Usage Examples
+
+### Search for Information
+
+```
+Search for "Python 3.13 new features" and give me a summary.
+```
+
+### Search then Fetch
+
+```
+Search for "latest Bangladesh cricket news" and fetch the full story from a reliable source.
+```
+
+### Get Specific Information
+
+```
+Search for "Node.js latest version" and fetch from nodejs.org to get the exact version number.
+```
+
+## Recommended System Prompt
+
+For best results, add this to your LM Studio system prompt:
+
+```
+You are a helpful AI assistant with access to web search and fetch tools.
+
+SHORT ANSWER RULES:
+- Keep responses concise and direct
+- Skip introductions, preambles, and filler phrases
+- No "Based on my research..." or "According to..."
+- Get straight to the answer
+- Use bullet points only when comparing 3+ items
+
+TOOL USAGE:
+- Always search first, then fetch the most relevant URL for exact details
+- For factual queries (versions, dates, prices), ALWAYS fetch the official/source URL
+- Don't rely on search snippets alone for accuracy
+
+For unreleased products/versions, clearly state if it's released or not. Don't make up release dates.
+```
+
+See `engineer_system_prompt.md` for a more comprehensive system prompt for software engineers.
+
+## Project Structure
+
+```
+web_search_tool/
+├── mcp_server.py           # FastMCP server (aggregates both tools)
+├── web_search/            # Web search module
+│   ├── __init__.py
+│   ├── search_engine.py   # DuckDuckGo implementation
+│   └── tools.py           # search_web tool definition
+├── web_fetch/             # Web fetch module
+│   ├── __init__.py
+│   ├── fetcher.py         # URL content extraction
+│   └── tools.py           # web_fetch tool definition
+├── requirements.txt       # Python dependencies
+├── Dockerfile             # Docker image definition
+├── docker-compose.yml     # Docker Compose config
+├── engineer_system_prompt.md  # Recommended system prompt
+└── README.md              # This file
+```
 
 ## Docker Configuration
 
@@ -103,97 +134,55 @@ Then reload MCP in LM Studio (Settings → Plugins → MCP → Reload).
 | `SERVER_PORT` | `5000` | Server port |
 | `PYTHONUNBUFFERED` | `1` | Unbuffered output |
 
-### Port Mapping
+### Ports
 
-The default port is `5000`. To use a different port:
+The default port is `5000`. The MCP endpoint is `http://localhost:5000/mcp`.
+
+### Docker Commands
 
 ```bash
-# Via environment variable
-docker run -d -p 8080:5000 -e SERVER_PORT=5000 fetch-web-page-mcp
+# Start services
+docker-compose up -d
 
-# Via docker-compose
-# Edit docker-compose.yml to change the port mapping
-```
+# Stop services
+docker-compose down
 
-### Docker Compose Example
+# View logs
+docker-compose logs -f
 
-```yaml
-version: '3.8'
-
-services:
-  tool-server:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=5000
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/mcp"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-```
-
-## Usage
-
-Ask LM Studio to read a webpage:
-
-```
-Can you read https://example.com and tell me what it says?
+# Rebuild and start
+docker-compose up -d --build
 ```
 
 ## Troubleshooting
 
 | Error | Solution |
 |-------|----------|
-| `ModuleNotFoundError: mcp` | `pip install mcp` |
-| `Connection closed` | Ensure MCP server is running; check paths in `mcp.json` |
-| Container exits immediately | Ensure using HTTP transport (`uvicorn` command); see Docker section |
-| Empty content | Page may be JavaScript-rendered (future Playwright support planned) |
-| Docker port binding error | Check port not in use; may need elevated privileges |
-
-### Container Logs
-
-```bash
-# View logs
-docker logs fetch-web-page-mcp
-
-# Follow logs
-docker logs -f fetch-web-page-mcp
-
-# Via docker-compose
-docker-compose logs -f tool-server
-```
+| Empty search results | Check DuckDuckGo HTML structure may have changed |
+| 404 on fetch | URL may be invalid or page moved |
+| Connection errors | Ensure Docker port 5000 is available |
+| Model doesn't fetch | Add "fetch the article" to your prompt |
 
 ### Verify Server Running
 
 ```bash
-# Health check
-curl http://localhost:5000/mcp
-
-# Docker
+# Check container is running
 docker ps
+
+# Test endpoint (requires POST with session)
+curl -X POST http://localhost:5000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"web_search_call","params":{"query":"test"},"id":1,"session_id":"test"}'
 ```
 
-## Project Structure
+## Dependencies
 
-```
-.
-├── web_search_tool.py      # Core scraping logic
-├── mcp_server.py          # MCP server with HTTP transport
-├── requirements.txt      # Dependencies
-├── Dockerfile            # Docker image definition
-├── docker-compose.yml   # Docker Compose configuration
-└── README.md            # This file
-```
+- `mcp>=1.27.0` - FastMCP server
+- `requests` - HTTP requests
+- `beautifulsoup4` - HTML parsing
+- `lxml` - Fast HTML parser
+- `uvicorn` - ASGI server
 
-## Future Enhancements
+## License
 
-- Playwright for JavaScript-rendered pages
-- Image extraction
-- PDF/document support
-- Web search functionality
+MIT
